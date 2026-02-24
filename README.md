@@ -1,16 +1,93 @@
-# React + Vite
+# Ledger
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A personal business finance dashboard for tracking income, expenses, and monthly budgets. Built as a portfolio piece demonstrating full-stack development with real-time data, OAuth authentication, and data visualisation.
 
-Currently, two official plugins are available:
+Base currency is GBP (£) with support for foreign currencies via live exchange rate conversion.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Layer | Technology |
+|---|---|
+| Frontend | React 18 |
+| Build Tool | Vite |
+| Routing | React Router v6 |
+| Styling | Tailwind CSS |
+| Charts | Recharts |
+| Backend / Database | Supabase (PostgreSQL) |
+| Authentication | Supabase Auth (email, Google OAuth, Apple OAuth) |
+| Currency API | ExchangeRate-API (free tier) |
+| Export | CSV (custom) / jsPDF |
+| Deployment | Vercel |
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Architecture
+
+Ledger follows a **feature-oriented, component-driven** architecture with a clear separation between UI, data, and business logic.
+
+### Frontend Structure
+
+```
+src/
+├── components/
+│   ├── ui/          # Reusable base components (Button, Card, Input, Modal)
+│   ├── charts/      # Chart components (DonutChart, TrendLineChart)
+│   ├── layout/      # Sidebar, Navbar, PageWrapper
+│   └── forms/       # ExpenseForm, IncomeForm, BudgetForm
+├── pages/           # One file per route (Overview, Expenses, Income, Budgets, Reports, Settings)
+├── hooks/           # Data-fetching hooks (useExpenses, useIncome, useBudgets, useCurrency)
+├── lib/             # Third-party clients and utilities (supabase.js, currency.js, export.js)
+├── context/         # Global auth state (AuthContext)
+└── routes/          # Route guards (ProtectedRoute)
+```
+
+### Data Layer
+
+All data is persisted in **Supabase (PostgreSQL)**. There is no localStorage usage — state is either fetched from the database or held in React component state. Every table has **Row Level Security (RLS)** enforced, ensuring users can only access their own data.
+
+Custom hooks (`useExpenses`, `useIncome`, `useBudgets`) abstract all Supabase queries, keeping pages and components free of data-fetching logic.
+
+### Auth
+
+Authentication is handled entirely by Supabase Auth. The `AuthContext` provider manages the session and exposes a clean API (`signInWithEmail`, `signInWithGoogle`, `signInWithApple`, `signOut`) to the rest of the app. Routes are protected via a `ProtectedRoute` layout component using React Router's `<Outlet />` pattern, which redirects unauthenticated users to `/login`.
+
+### Currency Handling
+
+All values are stored in their **original currency alongside a pre-converted GBP value**. Source data is never discarded. Live exchange rates are fetched from ExchangeRate-API and cached within the session via the `useCurrency` hook.
+
+---
+
+## Pages
+
+| Route | Purpose |
+|---|---|
+| `/` | Overview — P&L summary, charts, monthly snapshot |
+| `/expenses` | Expenses — card grid with add / edit / delete |
+| `/income` | Income — card grid with add / edit / delete |
+| `/budgets` | Budgets — monthly targets vs actuals by category |
+| `/reports` | Reports — trends, breakdowns, CSV and PDF export |
+| `/settings` | Settings — profile, auth providers, preferences |
+| `/login` | Login — email/password and OAuth |
+
+---
+
+## Local Development
+
+1. Clone the repo and install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Copy `.env.example` to `.env` and fill in your Supabase credentials:
+   ```
+   VITE_SUPABASE_URL=
+   VITE_SUPABASE_ANON_KEY=
+   VITE_EXCHANGE_RATE_API_KEY=
+   ```
+
+3. Start the dev server:
+   ```bash
+   npm run dev
+   ```
