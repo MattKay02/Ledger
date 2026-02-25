@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import PageWrapper from '../components/layout/PageWrapper'
@@ -157,6 +158,20 @@ export default function Settings() {
               )
             })}
           </div>
+        </Card>
+
+        {/* ── Privacy & Legal ── */}
+        <Card>
+          <h2 className="text-white font-semibold text-base mb-3">Privacy &amp; Legal</h2>
+          <p className="text-muted text-sm mb-4">
+            Learn how Ledger collects, uses, and protects your personal data.
+          </p>
+          <Link
+            to="/privacy"
+            className="inline-flex items-center gap-1.5 text-accent hover:text-accent-hover text-sm transition-colors"
+          >
+            Read Privacy Policy →
+          </Link>
         </Card>
 
         {/* ── Data ── */}

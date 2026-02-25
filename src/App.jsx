@@ -9,6 +9,7 @@ import Income from './pages/Income'
 import Budgets from './pages/Budgets'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
+import Privacy from './pages/Privacy'
 import './index.css'
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
         <Routes>
           {/* Public */}
           <Route path="/login" element={<Login />} />
+          <Route path="/privacy" element={<Privacy />} />
 
           {/* Auth guard */}
           <Route element={<ProtectedRoute />}>

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const GoogleIcon = () => (
@@ -23,6 +23,7 @@ export default function Login() {
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [agreedToPolicy, setAgreedToPolicy] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [signupDone, setSignupDone] = useState(false)
@@ -66,6 +67,7 @@ export default function Login() {
     setMode(next)
     setError('')
     setSignupDone(false)
+    setAgreedToPolicy(false)
   }
 
   return (
@@ -134,9 +136,29 @@ export default function Login() {
                   />
                 </div>
 
+                {mode === 'signup' && (
+                  <label className="flex items-start gap-3 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={agreedToPolicy}
+                      onChange={e => setAgreedToPolicy(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-surface-border bg-surface-elevated accent-accent cursor-pointer flex-shrink-0"
+                    />
+                    <span className="text-sm text-muted leading-snug">
+                      I have read and agree to the{' '}
+                      <Link
+                        to="/privacy"
+                        className="text-accent hover:text-accent-hover transition-colors"
+                      >
+                        Privacy Policy
+                      </Link>
+                    </span>
+                  </label>
+                )}
+
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (mode === 'signup' && !agreedToPolicy)}
                   className="mt-1 bg-accent hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg px-4 py-2.5 text-sm font-medium transition-colors"
                 >
                   {loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
