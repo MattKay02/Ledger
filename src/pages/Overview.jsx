@@ -7,7 +7,6 @@ import { useBudgets, getBudgetStatus } from '../hooks/useBudgets'
 import { usePeriodSelector } from '../hooks/useAvailablePeriods'
 import Select from '../components/ui/Select'
 import PageWrapper from '../components/layout/PageWrapper'
-import StatCard from '../components/ui/StatCard'
 import Card from '../components/ui/Card'
 import DonutChart from '../components/charts/DonutChart'
 import TrendLineChart from '../components/charts/TrendLineChart'
@@ -81,6 +80,8 @@ export default function Overview() {
         .reduce((sum, e) => sum + parseFloat(e.amount_gbp), 0),
     [expenses],
   )
+
+  const oneOffExpenses = totalExpenses - recurringCosts
 
   // ── Donut chart data (expenses by category, selected month) ─────────────────
 
@@ -199,26 +200,45 @@ export default function Overview() {
     >
 
       {/* ── Stat cards ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          label="Total Income"
-          value={summaryLoading ? '—' : formatGBP(totalIncome)}
-          valueClassName="text-success"
-        />
-        <StatCard
-          label="Total Expenses"
-          value={summaryLoading ? '—' : formatGBP(totalExpenses)}
-          valueClassName="text-danger"
-        />
-        <StatCard
-          label="Net Profit / Loss"
-          value={summaryLoading ? '—' : formatGBP(netPL)}
-          valueClassName={netPL >= 0 ? 'text-success' : 'text-danger'}
-        />
-        <StatCard
-          label="Recurring Costs"
-          value={summaryLoading ? '—' : formatGBP(recurringCosts)}
-        />
+      <div className="mb-6">
+        <p className="text-xs font-medium text-muted uppercase tracking-widest mb-3 pl-0.5">
+          {periodLabel}
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+
+          {/* Income */}
+          <div className="bg-surface-card border border-surface-border rounded-xl p-6">
+            <p className="text-muted text-sm font-medium">Income</p>
+            <p className="text-2xl font-bold mt-1 text-success">
+              {summaryLoading ? '—' : formatGBP(totalIncome)}
+            </p>
+          </div>
+
+          {/* Expenses (one-off only) */}
+          <div className="bg-surface-card border border-surface-border rounded-xl p-6">
+            <p className="text-muted text-sm font-medium">Expenses</p>
+            <p className="text-2xl font-bold mt-1 text-danger">
+              {summaryLoading ? '—' : formatGBP(oneOffExpenses)}
+            </p>
+          </div>
+
+          {/* Recurring — styled as part of the expenses group */}
+          <div className="bg-surface-card border border-surface-border border-l-2 border-l-danger rounded-xl p-6">
+            <p className="text-muted text-sm font-medium">Recurring Expenses</p>
+            <p className="text-2xl font-bold mt-1 text-danger">
+              {summaryLoading ? '—' : formatGBP(recurringCosts)}
+            </p>
+          </div>
+
+          {/* Net P&L — larger, far right */}
+          <div className="bg-surface-card border border-surface-border rounded-xl p-6 flex flex-col justify-center">
+            <p className="text-muted text-sm font-medium">Net Profit / Loss</p>
+            <p className={`text-3xl font-bold mt-1 ${netPL >= 0 ? 'text-success' : 'text-danger'}`}>
+              {summaryLoading ? '—' : formatGBP(netPL)}
+            </p>
+          </div>
+
+        </div>
       </div>
 
       {/* ── Budget health (shown only when budgets exist for the month) ── */}
@@ -271,7 +291,7 @@ export default function Overview() {
       {/* ── Charts row: donut + line trend ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
         <Card>
-          <h2 className="text-white text-sm font-semibold mb-2">Expenses by Category</h2>
+          <h2 className="text-white text-sm font-semibold mb-2">Expenses by Category — {periodLabel}</h2>
           {expensesLoading ? (
             <div className="flex items-center justify-center h-60 text-muted text-sm">Loading…</div>
           ) : (

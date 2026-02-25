@@ -3,7 +3,7 @@ import Input from '../ui/Input'
 import DatePicker from '../ui/DatePicker'
 import Select from '../ui/Select'
 import Button from '../ui/Button'
-import { getExchangeRates, convertToGBP, COMMON_CURRENCIES } from '../../lib/currency'
+import { getExchangeRates, convertToGBP, COMMON_CURRENCIES, CURRENCY_SYMBOLS } from '../../lib/currency'
 
 const EXPENSE_CATEGORIES = [
   'Hosting & Infrastructure',
@@ -256,15 +256,13 @@ const ExpenseForm = ({ initialData, recurringTemplate, onSubmit, onStop, onCance
 
         <div className="flex flex-col gap-1 w-28">
           <label className="text-sm text-muted font-medium">Currency</label>
-          <select
+          <Select
             value={form.currency_original}
-            onChange={set('currency_original')}
-            className="bg-surface-elevated border border-surface-border text-white rounded-lg px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
-          >
-            {COMMON_CURRENCIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+            onChange={(val) => setForm((prev) => ({ ...prev, currency_original: val }))}
+            options={COMMON_CURRENCIES.map((c) => ({ value: c, label: `${c} (${CURRENCY_SYMBOLS[c]})` }))}
+            scrollable
+            className="w-full"
+          />
         </div>
       </div>
 
@@ -286,15 +284,13 @@ const ExpenseForm = ({ initialData, recurringTemplate, onSubmit, onStop, onCance
 
       <div className="flex flex-col gap-1">
         <label className="text-sm text-muted font-medium">Category</label>
-        <select
+        <Select
           value={form.category}
-          onChange={set('category')}
-          className="bg-surface-elevated border border-surface-border text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent transition-colors"
-        >
-          {EXPENSE_CATEGORIES.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
+          onChange={(val) => setForm((prev) => ({ ...prev, category: val }))}
+          options={EXPENSE_CATEGORIES.map((cat) => ({ value: cat, label: cat }))}
+          error={!!errors.category}
+          className="w-full"
+        />
         {errors.category && <p className="text-danger text-xs">{errors.category}</p>}
       </div>
 

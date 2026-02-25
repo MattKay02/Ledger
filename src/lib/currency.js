@@ -29,6 +29,13 @@ export const convertToGBP = (amount, fromCurrency, rates) => {
 }
 
 export const COMMON_CURRENCIES = [
-  'GBP', 'USD', 'EUR', 'CAD', 'AUD', 'JPY', 'CHF', 'SEK', 'NOK', 'DKK',
-  'NZD', 'SGD', 'HKD', 'INR', 'BRL', 'MXN', 'ZAR', 'AED', 'PLN', 'CZK',
+  'GBP', 'USD', 'ZAR', 'EUR', 'CAD', 'AUD', 'JPY', 'CHF', 'SEK', 'NOK',
+  'DKK', 'NZD', 'SGD', 'HKD', 'INR', 'BRL', 'MXN', 'AED', 'PLN', 'CZK',
 ]
+
+export const CURRENCY_SYMBOLS = {
+  GBP: '£', USD: '$', EUR: '€', CAD: '$', AUD: '$', JPY: '¥',
+  CHF: 'Fr', SEK: 'kr', NOK: 'kr', DKK: 'kr', NZD: '$', SGD: '$',
+  HKD: '$', INR: '₹', BRL: 'R$', MXN: '$', ZAR: 'R', AED: 'د.إ',
+  PLN: 'zł', CZK: 'Kč',
+}

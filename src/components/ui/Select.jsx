@@ -17,7 +17,7 @@ const CheckIcon = () => (
  * options: { value: any, label: string, disabled?: boolean }[]
  * onChange: (value) => void
  */
-const Select = ({ value, onChange, options, disabled = false, className = '', placement = 'bottom-left' }) => {
+const Select = ({ value, onChange, options, disabled = false, error = false, scrollable = false, className = '', placement = 'bottom-left' }) => {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -49,9 +49,11 @@ const Select = ({ value, onChange, options, disabled = false, className = '', pl
         type="button"
         disabled={disabled}
         onClick={() => setOpen((prev) => !prev)}
-        className={`flex items-center gap-2 bg-surface-elevated border text-sm font-medium rounded-lg px-3 py-2 transition-colors select-none whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`w-full flex items-center justify-between gap-2 bg-surface-elevated border text-sm font-medium rounded-lg px-3 py-2.5 transition-colors select-none whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${
           open
             ? 'border-accent text-white'
+            : error
+            ? 'border-danger text-white hover:border-danger/70'
             : 'border-surface-border text-white hover:border-accent/50'
         }`}
       >
@@ -63,7 +65,9 @@ const Select = ({ value, onChange, options, disabled = false, className = '', pl
 
       {/* Dropdown panel */}
       {open && (
-        <div className={`absolute z-50 min-w-full overflow-hidden bg-surface-card border border-surface-border rounded-xl shadow-2xl py-1 ${
+        <div className={`absolute z-50 min-w-full bg-surface-card border border-surface-border rounded-xl shadow-2xl py-1 ${
+          scrollable ? 'overflow-y-auto max-h-48 scrollbar-hidden' : 'overflow-hidden'
+        } ${
           placement === 'top-right'
             ? 'bottom-full mb-1.5 right-0'
             : 'top-full mt-1.5 left-0'

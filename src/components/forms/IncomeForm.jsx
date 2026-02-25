@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import Input from '../ui/Input'
 import DatePicker from '../ui/DatePicker'
+import Select from '../ui/Select'
 import Button from '../ui/Button'
-import { getExchangeRates, convertToGBP, COMMON_CURRENCIES } from '../../lib/currency'
+import { getExchangeRates, convertToGBP, COMMON_CURRENCIES, CURRENCY_SYMBOLS } from '../../lib/currency'
 
 export const SOURCE_TYPES = [
   { value: 'client_work', label: 'Client Work' },
@@ -182,15 +183,13 @@ const IncomeForm = ({ initialData, onSubmit, onCancel, submitting }) => {
 
         <div className="flex flex-col gap-1 w-28">
           <label className="text-sm text-muted font-medium">Currency</label>
-          <select
+          <Select
             value={form.currency_original}
-            onChange={set('currency_original')}
-            className="bg-surface-elevated border border-surface-border text-white rounded-lg px-3 py-2.5 text-sm outline-none focus:border-accent transition-colors"
-          >
-            {COMMON_CURRENCIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+            onChange={(val) => setForm((prev) => ({ ...prev, currency_original: val }))}
+            options={COMMON_CURRENCIES.map((c) => ({ value: c, label: `${c} (${CURRENCY_SYMBOLS[c]})` }))}
+            scrollable
+            className="w-full"
+          />
         </div>
       </div>
 
@@ -212,15 +211,12 @@ const IncomeForm = ({ initialData, onSubmit, onCancel, submitting }) => {
 
       <div className="flex flex-col gap-1">
         <label className="text-sm text-muted font-medium">Source</label>
-        <select
+        <Select
           value={form.source_type}
-          onChange={set('source_type')}
-          className="bg-surface-elevated border border-surface-border text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent transition-colors"
-        >
-          {SOURCE_TYPES.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
+          onChange={(val) => setForm((prev) => ({ ...prev, source_type: val }))}
+          options={SOURCE_TYPES}
+          className="w-full"
+        />
       </div>
 
       <DatePicker

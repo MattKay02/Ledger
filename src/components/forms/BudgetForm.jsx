@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Select from '../ui/Select'
 import Button from '../ui/Button'
 
 export const EXPENSE_CATEGORIES = [
@@ -77,15 +78,13 @@ const BudgetForm = ({ initialData, existingCategories = [], onSubmit, onCancel, 
             All categories have budgets this month
           </div>
         ) : (
-          <select
+          <Select
             value={form.category}
-            onChange={set('category')}
-            className="bg-surface-elevated border border-surface-border text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent transition-colors"
-          >
-            {availableCategories.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
+            onChange={(val) => setForm((prev) => ({ ...prev, category: val }))}
+            options={availableCategories.map((cat) => ({ value: cat, label: cat }))}
+            error={!!errors.category}
+            className="w-full"
+          />
         )}
         {errors.category && <p className="text-danger text-xs">{errors.category}</p>}
       </div>

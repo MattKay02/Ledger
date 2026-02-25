@@ -13,7 +13,10 @@ import FileUploadButton from '../components/ledger-bot/FileUploadButton'
 
 async function extractPdfText(arrayBuffer) {
   const pdfjsLib = await import('pdfjs-dist')
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url
+  ).href
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
   let text = ''
   for (let i = 1; i <= pdf.numPages; i++) {
@@ -98,10 +101,15 @@ function WelcomeState({ onPrompt }) {
         </svg>
       </div>
 
-      <div>
-        <h2 className="text-white text-lg font-semibold mb-1">How can I help you log today?</h2>
+      <div className="flex flex-col items-center gap-3">
+        <h2 className="text-white text-lg font-semibold">Log an income or expense</h2>
+        <div className="flex items-center gap-2">
+          <span className="px-2.5 py-1 rounded-md bg-success/10 border border-success/20 text-success text-xs font-medium">+ Income</span>
+          <span className="text-muted/40 text-xs">·</span>
+          <span className="px-2.5 py-1 rounded-md bg-danger/10 border border-danger/20 text-danger text-xs font-medium">− Expense</span>
+        </div>
         <p className="text-muted text-sm max-w-sm">
-          Describe a transaction, or upload a receipt, invoice, or CSV file.
+          Describe the transaction and I'll extract the details. You can also upload a receipt, invoice, or CSV.
         </p>
       </div>
 
@@ -480,7 +488,7 @@ export default function LedgerBot() {
             placeholder={
               isConfirming
                 ? 'Confirm or edit the transaction above…'
-                : 'Describe a transaction, or upload a receipt, invoice, or CSV…'
+                : 'Log an income or expense — or upload a receipt, invoice, or CSV…'
             }
             disabled={isThinking || isConfirming}
             rows={1}
