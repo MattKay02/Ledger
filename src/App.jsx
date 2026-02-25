@@ -4,6 +4,7 @@ import ProtectedRoute from './routes/ProtectedRoute'
 import AppLayout from './components/layout/Sidebar'
 import Login from './pages/Login'
 import Overview from './pages/Overview'
+import LedgerBot from './pages/LedgerBot'
 import Expenses from './pages/Expenses'
 import Income from './pages/Income'
 import Budgets from './pages/Budgets'
@@ -26,6 +27,7 @@ export default function App() {
             {/* App shell — sidebar + scrollable main */}
             <Route element={<AppLayout />}>
               <Route path="/" element={<Overview />} />
+              <Route path="/ledger-bot" element={<LedgerBot />} />
               <Route path="/expenses" element={<Expenses />} />
               <Route path="/income" element={<Income />} />
               <Route path="/budgets" element={<Budgets />} />
