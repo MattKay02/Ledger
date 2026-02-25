@@ -13,56 +13,88 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
 
-const TYPE_LABELS = { recurring: 'Recurring', one_off: 'One-off' }
-
-const TYPE_COLOURS = {
-  recurring: 'bg-accent/20 text-accent',
-  one_off: 'bg-surface-elevated text-muted',
-}
-
 const formatGBP = (amount) =>
   new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount)
 
 export default function Expenses() {
-  const { month, year, setMonth, setYear, periodsLoaded, yearOptions, monthOptions } = usePeriodSelector('expenses')
+  const { month, year, setMonth, setYear, periodsLoaded, yearOptions, monthOptions } =
+    usePeriodSelector('expenses')
+
   const [modalOpen, setModalOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState(null)
+  const [editingRecurringTemplate, setEditingRecurringTemplate] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
-  const [pendingDelete, setPendingDelete] = useState(null) // { id, title }
+  const [pendingDelete, setPendingDelete] = useState(null) // { id, title, recurringExpenseId }
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState(null)
 
-  const { expenses, loading, error, addExpense, updateExpense, deleteExpense } = useExpenses(month, year)
+  const {
+    expenses,
+    loading,
+    error,
+    addExpense,
+    updateExpense,
+    deleteExpense,
+    addRecurring,
+    updateRecurring,
+    stopRecurring,
+    fetchRecurringTemplate,
+  } = useExpenses(month, year)
 
   const totalGBP = expenses.reduce((sum, e) => sum + parseFloat(e.amount_gbp), 0)
   const recurringTotal = expenses
     .filter((e) => e.type === 'recurring')
     .reduce((sum, e) => sum + parseFloat(e.amount_gbp), 0)
 
+  // ── Modal open/close ─────────────────────────────────────────────────────────
+
   const openAdd = () => {
     setEditingExpense(null)
+    setEditingRecurringTemplate(null)
     setFormError(null)
     setModalOpen(true)
   }
 
-  const openEdit = (expense) => {
-    setEditingExpense(expense)
+  const openEdit = async (expense) => {
     setFormError(null)
+    let template = null
+    if (expense.recurring_expense_id) {
+      template = await fetchRecurringTemplate(expense.recurring_expense_id)
+    }
+    setEditingExpense(expense)
+    setEditingRecurringTemplate(template)
     setModalOpen(true)
   }
 
   const closeModal = () => {
     setModalOpen(false)
     setEditingExpense(null)
+    setEditingRecurringTemplate(null)
     setFormError(null)
   }
+
+  // ── Submit routing ───────────────────────────────────────────────────────────
 
   const handleSubmit = async (payload) => {
     setSubmitting(true)
     setFormError(null)
-    const result = editingExpense
-      ? await updateExpense(editingExpense.id, payload)
-      : await addExpense(payload)
+
+    let result
+    if (editingExpense) {
+      if (editingExpense.recurring_expense_id) {
+        // Update the recurring template (applies to future months only)
+        result = await updateRecurring(editingExpense.recurring_expense_id, payload)
+      } else {
+        result = await updateExpense(editingExpense.id, payload)
+      }
+    } else {
+      if (payload.type === 'recurring') {
+        result = await addRecurring(payload)
+      } else {
+        result = await addExpense(payload)
+      }
+    }
+
     setSubmitting(false)
     if (result.error) {
       setFormError(result.error.message || 'Something went wrong. Please try again.')
@@ -71,25 +103,53 @@ export default function Expenses() {
     }
   }
 
+  // ── Stop recurring ───────────────────────────────────────────────────────────
+
+  const handleStopRecurring = async () => {
+    if (!editingExpense?.recurring_expense_id) return
+    setSubmitting(true)
+    const result = await stopRecurring(editingExpense.recurring_expense_id)
+    setSubmitting(false)
+    if (result.error) {
+      setFormError(result.error.message || 'Failed to stop recurring expense.')
+    } else {
+      closeModal()
+    }
+  }
+
+  // ── Delete ───────────────────────────────────────────────────────────────────
+
   const confirmDelete = (expense) => {
-    setPendingDelete({ id: expense.id, title: expense.title })
+    setPendingDelete({
+      id: expense.id,
+      title: expense.title,
+      recurringExpenseId: expense.recurring_expense_id || null,
+    })
   }
 
   const handleDelete = async () => {
     if (!pendingDelete) return
     setDeletingId(pendingDelete.id)
     setPendingDelete(null)
-    await deleteExpense(pendingDelete.id)
+
+    if (pendingDelete.recurringExpenseId) {
+      // Stop the template (deactivate + delete future rows), then delete current row
+      await stopRecurring(pendingDelete.recurringExpenseId)
+      await deleteExpense(pendingDelete.id)
+    } else {
+      await deleteExpense(pendingDelete.id)
+    }
+
     setDeletingId(null)
   }
 
+  const isRecurringDelete = !!pendingDelete?.recurringExpenseId
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   return (
-    <PageWrapper
-      title="Expenses"
-      action={
-        <Button onClick={openAdd}>+ Add Expense</Button>
-      }
-    >
+    <PageWrapper title="Expenses" action={<Button onClick={openAdd}>+ Add Expense</Button>}>
+
       {/* Period selector + summary */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
         <div className="flex gap-2">
@@ -151,20 +211,33 @@ export default function Expenses() {
       <Modal
         isOpen={!!pendingDelete}
         onClose={() => setPendingDelete(null)}
-        title="Delete expense?"
+        title={isRecurringDelete ? 'Stop recurring expense?' : 'Delete expense?'}
       >
-        <p className="text-muted text-sm mb-1">
-          You are about to delete <span className="text-white font-medium">"{pendingDelete?.title}"</span>.
-        </p>
-        <p className="text-danger text-sm mb-6">
-          This is permanent and cannot be undone.
-        </p>
+        {isRecurringDelete ? (
+          <>
+            <p className="text-muted text-sm mb-1">
+              You are about to delete{' '}
+              <span className="text-white font-medium">"{pendingDelete?.title}"</span> from this month.
+            </p>
+            <p className="text-danger text-sm mb-6">
+              This will also stop all future occurrences of this recurring expense.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-muted text-sm mb-1">
+              You are about to delete{' '}
+              <span className="text-white font-medium">"{pendingDelete?.title}"</span>.
+            </p>
+            <p className="text-danger text-sm mb-6">This is permanent and cannot be undone.</p>
+          </>
+        )}
         <div className="flex gap-3">
           <Button variant="ghost" className="flex-1" onClick={() => setPendingDelete(null)}>
             Cancel
           </Button>
           <Button variant="danger" className="flex-1" onClick={handleDelete}>
-            Yes, delete it
+            {isRecurringDelete ? 'Yes, stop it' : 'Yes, delete it'}
           </Button>
         </div>
       </Modal>
@@ -173,7 +246,13 @@ export default function Expenses() {
       <Modal
         isOpen={modalOpen}
         onClose={closeModal}
-        title={editingExpense ? 'Edit Expense' : 'Add Expense'}
+        title={
+          editingExpense
+            ? editingRecurringTemplate
+              ? 'Edit Recurring Expense'
+              : 'Edit Expense'
+            : 'Add Expense'
+        }
       >
         {formError && (
           <p className="text-danger text-sm mb-4 bg-danger/10 border border-danger/30 rounded-lg px-4 py-2.5">
@@ -182,7 +261,9 @@ export default function Expenses() {
         )}
         <ExpenseForm
           initialData={editingExpense}
+          recurringTemplate={editingRecurringTemplate}
           onSubmit={handleSubmit}
+          onStop={editingRecurringTemplate ? handleStopRecurring : undefined}
           onCancel={closeModal}
           submitting={submitting}
         />
@@ -193,6 +274,8 @@ export default function Expenses() {
 
 function ExpenseCard({ expense, onEdit, onDelete, deleting }) {
   const isForeign = expense.currency_original !== 'GBP'
+  const isRecurring = expense.type === 'recurring'
+  const isAutoCreated = !!expense.recurring_expense_id
 
   return (
     <Card className="flex flex-col gap-3">
@@ -201,7 +284,11 @@ function ExpenseCard({ expense, onEdit, onDelete, deleting }) {
         <div className="flex-1 min-w-0">
           <p className="text-white font-medium truncate">{expense.title}</p>
           <p className="text-muted text-xs mt-0.5">
-            {new Date(expense.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            {new Date(expense.date).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })}
           </p>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
@@ -226,7 +313,11 @@ function ExpenseCard({ expense, onEdit, onDelete, deleting }) {
         <p className="text-white text-xl font-bold">{formatGBP(expense.amount_gbp)}</p>
         {isForeign && (
           <p className="text-muted text-xs mt-0.5">
-            {parseFloat(expense.amount_original).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {expense.currency_original}
+            {parseFloat(expense.amount_original).toLocaleString('en-GB', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}{' '}
+            {expense.currency_original}
             {expense.exchange_rate && expense.exchange_rate !== 1 && (
               <span className="ml-1">· Rate: {parseFloat(expense.exchange_rate).toFixed(4)}</span>
             )}
@@ -239,9 +330,16 @@ function ExpenseCard({ expense, onEdit, onDelete, deleting }) {
         <span className="text-xs px-2 py-0.5 rounded-full bg-surface-elevated border border-surface-border text-muted">
           {expense.category}
         </span>
-        <span className={`text-xs px-2 py-0.5 rounded-full ${TYPE_COLOURS[expense.type]}`}>
-          {TYPE_LABELS[expense.type]}
-        </span>
+        {isRecurring && (
+          <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
+            isAutoCreated
+              ? 'bg-accent/20 text-accent border border-accent/30'
+              : 'bg-accent/10 text-accent/70'
+          }`}>
+            <span>↻</span>
+            <span>Recurring</span>
+          </span>
+        )}
       </div>
 
       {/* Notes */}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Input from '../ui/Input'
+import DatePicker from '../ui/DatePicker'
 import Button from '../ui/Button'
 import { getExchangeRates, convertToGBP, COMMON_CURRENCIES } from '../../lib/currency'
 
@@ -222,11 +223,10 @@ const IncomeForm = ({ initialData, onSubmit, onCancel, submitting }) => {
         </select>
       </div>
 
-      <Input
+      <DatePicker
         label="Date"
-        type="date"
         value={form.date}
-        onChange={set('date')}
+        onChange={(val) => setForm((prev) => ({ ...prev, date: val }))}
         error={errors.date}
       />
 

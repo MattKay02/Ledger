@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import Input from '../ui/Input'
+import DatePicker from '../ui/DatePicker'
+import Select from '../ui/Select'
 import Button from '../ui/Button'
 import { getExchangeRates, convertToGBP, COMMON_CURRENCIES } from '../../lib/currency'
 
@@ -14,6 +16,11 @@ const EXPENSE_CATEGORIES = [
   'Other',
 ]
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
 const today = () => new Date().toISOString().split('T')[0]
 
 const emptyForm = {
@@ -24,16 +31,29 @@ const emptyForm = {
   type: 'one_off',
   date: today(),
   notes: '',
+  duration_type: 'indefinite',
+  duration_months: '',
+  end_month: new Date().getMonth() + 1,
+  end_year: new Date().getFullYear(),
 }
 
-const ExpenseForm = ({ initialData, onSubmit, onCancel, submitting }) => {
+/**
+ * Props:
+ *   initialData        — expense row for edit mode, null for add
+ *   recurringTemplate  — recurring_expenses template row if editing a recurring instance
+ *   onSubmit(payload)  — called with validated form data
+ *   onStop()           — called when user clicks "Stop from this month"
+ *   onCancel()
+ *   submitting
+ */
+const ExpenseForm = ({ initialData, recurringTemplate, onSubmit, onStop, onCancel, submitting }) => {
   const [form, setForm] = useState(emptyForm)
   const [convertedGBP, setConvertedGBP] = useState(null)
   const [rateInfo, setRateInfo] = useState(null)
   const [converting, setConverting] = useState(false)
   const [errors, setErrors] = useState({})
 
-  // Populate form when editing an existing expense
+  // Populate form when opening for edit (or reset when adding)
   useEffect(() => {
     if (initialData) {
       setForm({
@@ -44,14 +64,22 @@ const ExpenseForm = ({ initialData, onSubmit, onCancel, submitting }) => {
         type: initialData.type ?? 'one_off',
         date: initialData.date ?? today(),
         notes: initialData.notes ?? '',
+        // Duration fields come from the linked template, not the expense row
+        duration_type: recurringTemplate?.duration_type ?? 'indefinite',
+        duration_months: recurringTemplate?.duration_months ?? '',
+        end_month: recurringTemplate?.end_date
+          ? parseInt(recurringTemplate.end_date.slice(5, 7), 10)
+          : new Date().getMonth() + 1,
+        end_year: recurringTemplate?.end_date
+          ? parseInt(recurringTemplate.end_date.slice(0, 4), 10)
+          : new Date().getFullYear(),
       })
-      // Show stored GBP amount for reference when editing
       if (initialData.amount_gbp) {
         setConvertedGBP(initialData.amount_gbp)
         setRateInfo(
           initialData.currency_original !== 'GBP'
             ? { rate: initialData.exchange_rate, currency: initialData.currency_original }
-            : null
+            : null,
         )
       }
     } else {
@@ -60,7 +88,7 @@ const ExpenseForm = ({ initialData, onSubmit, onCancel, submitting }) => {
       setRateInfo(null)
     }
     setErrors({})
-  }, [initialData])
+  }, [initialData, recurringTemplate])
 
   // Live currency conversion preview
   useEffect(() => {
@@ -104,9 +132,26 @@ const ExpenseForm = ({ initialData, onSubmit, onCancel, submitting }) => {
     const errs = {}
     if (!form.title.trim()) errs.title = 'Title is required'
     const amt = parseFloat(form.amount_original)
-    if (!form.amount_original || isNaN(amt) || amt <= 0) errs.amount_original = 'Enter a valid amount greater than 0'
+    if (!form.amount_original || isNaN(amt) || amt <= 0)
+      errs.amount_original = 'Enter a valid amount greater than 0'
     if (!form.category.trim()) errs.category = 'Category is required'
     if (!form.date) errs.date = 'Date is required'
+
+    if (form.type === 'recurring') {
+      const day = parseInt(form.date.slice(8, 10), 10)
+      if (day > 28) errs.date = 'Recurring expenses must use a day of 28 or earlier so every month is valid'
+      if (form.duration_type === 'months') {
+        const months = parseInt(form.duration_months, 10)
+        if (!form.duration_months || isNaN(months) || months < 1)
+          errs.duration_months = 'Enter a valid number of months (minimum 1)'
+      }
+      if (form.duration_type === 'until_date') {
+        const endYear = parseInt(form.end_year, 10)
+        if (!form.end_year || isNaN(endYear) || endYear < new Date().getFullYear())
+          errs.end_year = 'Enter a valid end year'
+      }
+    }
+
     return errs
   }
 
@@ -148,12 +193,36 @@ const ExpenseForm = ({ initialData, onSubmit, onCancel, submitting }) => {
       notes: form.notes.trim() || null,
     }
 
+    if (form.type === 'recurring') {
+      payload.duration_type = form.duration_type
+      payload.duration_months =
+        form.duration_type === 'months' ? parseInt(form.duration_months, 10) : null
+      payload.end_date =
+        form.duration_type === 'until_date'
+          ? `${form.end_year}-${String(form.end_month).padStart(2, '0')}-01`
+          : null
+    }
+
     onSubmit(payload)
   }
 
+  const isRecurringInstance = !!recurringTemplate
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {initialData && (
+
+      {/* ── Notice: editing a recurring instance ── */}
+      {isRecurringInstance && (
+        <div className="flex gap-2.5 items-start bg-accent/10 border border-accent/30 rounded-lg px-4 py-3">
+          <span className="text-accent mt-0.5 shrink-0 text-base">↻</span>
+          <p className="text-accent text-xs leading-relaxed">
+            You are editing a recurring expense. Changes apply to future months only — past months keep their recorded values.
+          </p>
+        </div>
+      )}
+
+      {/* ── Warning: editing an existing one-off ── */}
+      {initialData && !isRecurringInstance && (
         <div className="flex gap-2.5 items-start bg-warning/10 border border-warning/30 rounded-lg px-4 py-3">
           <span className="text-warning mt-0.5 shrink-0">⚠</span>
           <p className="text-warning text-xs leading-relaxed">
@@ -161,6 +230,7 @@ const ExpenseForm = ({ initialData, onSubmit, onCancel, submitting }) => {
           </p>
         </div>
       )}
+
       <Input
         label="Title"
         placeholder="e.g. AWS billing, Adobe Creative Cloud"
@@ -228,33 +298,115 @@ const ExpenseForm = ({ initialData, onSubmit, onCancel, submitting }) => {
         {errors.category && <p className="text-danger text-xs">{errors.category}</p>}
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm text-muted font-medium">Type</label>
-        <div className="flex gap-2">
-          {['one_off', 'recurring'].map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setForm((prev) => ({ ...prev, type: t }))}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
-                form.type === t
-                  ? 'bg-accent border-accent text-white'
-                  : 'bg-surface-elevated border-surface-border text-muted hover:text-white'
-              }`}
-            >
-              {t === 'one_off' ? 'One-off' : 'Recurring'}
-            </button>
-          ))}
+      {/* Type toggle — hidden when editing a recurring instance (type is locked) */}
+      {!isRecurringInstance && (
+        <div className="flex flex-col gap-1">
+          <label className="text-sm text-muted font-medium">Type</label>
+          <div className="flex gap-2">
+            {['one_off', 'recurring'].map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, type: t }))}
+                className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${
+                  form.type === t
+                    ? 'bg-accent border-accent text-white'
+                    : 'bg-surface-elevated border-surface-border text-muted hover:text-white'
+                }`}
+              >
+                {t === 'one_off' ? 'One-off' : 'Recurring'}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      <Input
-        label="Date"
-        type="date"
+      <DatePicker
+        label={form.type === 'recurring' ? 'Start date' : 'Date'}
         value={form.date}
-        onChange={set('date')}
+        onChange={(val) => setForm((prev) => ({ ...prev, date: val }))}
         error={errors.date}
+        hint={form.type === 'recurring' ? 'Choose a day between 1–28 so the date is valid in every month' : undefined}
+        maxDay={form.type === 'recurring' ? 28 : undefined}
       />
+
+      {/* Duration section — shown when type is recurring */}
+      {form.type === 'recurring' && (
+        <div className="flex flex-col gap-3 bg-surface-elevated/50 border border-surface-border rounded-lg p-3">
+          <label className="text-sm text-muted font-medium">Duration</label>
+          <div className="flex gap-2">
+            {[
+              { value: 'indefinite', label: 'Indefinitely' },
+              { value: 'months', label: 'Fixed months' },
+              { value: 'until_date', label: 'Until date' },
+            ].map((d) => (
+              <button
+                key={d.value}
+                type="button"
+                onClick={() => setForm((prev) => ({ ...prev, duration_type: d.value }))}
+                className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-colors ${
+                  form.duration_type === d.value
+                    ? 'bg-accent border-accent text-white'
+                    : 'bg-surface-elevated border-surface-border text-muted hover:text-white'
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+
+          {form.duration_type === 'months' && (
+            <Input
+              label="Number of months"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="e.g. 12"
+              value={form.duration_months}
+              onChange={set('duration_months')}
+              error={errors.duration_months}
+            />
+          )}
+
+          {form.duration_type === 'until_date' && (
+            <div className="flex gap-3">
+              <div className="flex flex-col gap-1 flex-1">
+                <label className="text-sm text-muted font-medium">End month</label>
+                <Select
+                  value={Number(form.end_month)}
+                  onChange={(val) => setForm((prev) => ({ ...prev, end_month: val }))}
+                  options={MONTH_NAMES.map((name, i) => ({ value: i + 1, label: name }))}
+                  className="w-full"
+                  placement="top-right"
+                />
+              </div>
+              <div className="flex flex-col gap-1 w-32">
+                <label className="text-sm text-muted font-medium">End year</label>
+                <div className={`flex items-center bg-surface-elevated border ${errors.end_year ? 'border-danger' : 'border-surface-border'} rounded-lg overflow-hidden`}>
+                  <button
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, end_year: Math.max(new Date().getFullYear(), Number(prev.end_year) - 1) }))}
+                    className="px-3 py-2.5 text-muted hover:text-white transition-colors text-base leading-none"
+                  >
+                    −
+                  </button>
+                  <span className="flex-1 text-center text-white text-sm font-medium select-none">
+                    {form.end_year}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, end_year: Number(prev.end_year) + 1 }))}
+                    className="px-3 py-2.5 text-muted hover:text-white transition-colors text-base leading-none"
+                  >
+                    +
+                  </button>
+                </div>
+                {errors.end_year && <p className="text-danger text-xs">{errors.end_year}</p>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
         <label className="text-sm text-muted font-medium">Notes <span className="text-muted/60 font-normal">(optional)</span></label>
@@ -266,6 +418,18 @@ const ExpenseForm = ({ initialData, onSubmit, onCancel, submitting }) => {
           className="bg-surface-elevated border border-surface-border text-white rounded-lg px-4 py-2.5 text-sm outline-none focus:border-accent transition-colors placeholder:text-muted/50 resize-none"
         />
       </div>
+
+      {/* Stop recurring — only shown when editing an active recurring instance */}
+      {isRecurringInstance && onStop && (
+        <button
+          type="button"
+          onClick={onStop}
+          disabled={submitting}
+          className="w-full py-2.5 rounded-lg text-sm text-danger border border-danger/30 hover:bg-danger/10 transition-colors disabled:opacity-50"
+        >
+          Stop from this month
+        </button>
+      )}
 
       <div className="flex gap-3 mt-2">
         <Button type="button" variant="ghost" onClick={onCancel} className="flex-1">
@@ -279,4 +443,5 @@ const ExpenseForm = ({ initialData, onSubmit, onCancel, submitting }) => {
   )
 }
 
+export { EXPENSE_CATEGORIES }
 export default ExpenseForm

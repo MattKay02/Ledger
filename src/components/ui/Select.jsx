@@ -17,7 +17,7 @@ const CheckIcon = () => (
  * options: { value: any, label: string, disabled?: boolean }[]
  * onChange: (value) => void
  */
-const Select = ({ value, onChange, options, disabled = false, className = '' }) => {
+const Select = ({ value, onChange, options, disabled = false, className = '', placement = 'bottom-left' }) => {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -63,7 +63,11 @@ const Select = ({ value, onChange, options, disabled = false, className = '' }) 
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute top-full mt-1.5 left-0 z-50 min-w-full overflow-hidden bg-surface-card border border-surface-border rounded-xl shadow-2xl py-1">
+        <div className={`absolute z-50 min-w-full overflow-hidden bg-surface-card border border-surface-border rounded-xl shadow-2xl py-1 ${
+          placement === 'top-right'
+            ? 'bottom-full mb-1.5 right-0'
+            : 'top-full mt-1.5 left-0'
+        }`}>
           {options.map((option) => {
             const isSelected = option.value === value
             const isDisabled = !!option.disabled
