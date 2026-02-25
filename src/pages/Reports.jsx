@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
+import { usePeriodSelector } from '../hooks/useAvailablePeriods'
+import Select from '../components/ui/Select'
 import {
   BarChart,
   Bar,
@@ -46,10 +48,14 @@ const formatGBP = (n) => {
 const monthFromDate = (dateStr) => parseInt(dateStr.slice(5, 7), 10)
 
 export default function Reports() {
-  const now = new Date()
   const { user } = useAuth()
 
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  const {
+    year: selectedYear,
+    setYear: setSelectedYear,
+    periodsLoaded,
+    yearOptions,
+  } = usePeriodSelector('both')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [incomeRows, setIncomeRows] = useState([])
@@ -203,20 +209,9 @@ export default function Reports() {
 
   // ── Year selector + export actions ────────────────────────────────────────
 
-  const yearOptions = []
-  for (let y = 2023; y <= now.getFullYear() + 1; y++) yearOptions.push(y)
-
   const headerActions = (
     <div className="flex items-center gap-3">
-      <select
-        value={selectedYear}
-        onChange={(e) => setSelectedYear(Number(e.target.value))}
-        className="bg-surface-elevated border border-surface-border text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-accent transition-colors cursor-pointer"
-      >
-        {yearOptions.map((y) => (
-          <option key={y} value={y}>{y}</option>
-        ))}
-      </select>
+      <Select value={selectedYear} onChange={setSelectedYear} options={yearOptions} disabled={!periodsLoaded} />
       <Button
         variant="ghost"
         onClick={handleCSVExport}

@@ -4,17 +4,14 @@ import { useAuth } from '../context/AuthContext'
 import { useExpenses } from '../hooks/useExpenses'
 import { useIncome } from '../hooks/useIncome'
 import { useBudgets, getBudgetStatus } from '../hooks/useBudgets'
+import { usePeriodSelector } from '../hooks/useAvailablePeriods'
+import Select from '../components/ui/Select'
 import PageWrapper from '../components/layout/PageWrapper'
 import StatCard from '../components/ui/StatCard'
 import Card from '../components/ui/Card'
 import DonutChart from '../components/charts/DonutChart'
 import TrendLineChart from '../components/charts/TrendLineChart'
 import MonthlyBarChart from '../components/charts/MonthlyBarChart'
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
@@ -43,11 +40,17 @@ const BUDGET_STATUS_COLOUR = {
 }
 
 export default function Overview() {
-  const now = new Date()
   const { user } = useAuth()
 
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
-  const [selectedYear, setSelectedYear] = useState(now.getFullYear())
+  const {
+    month: selectedMonth,
+    year: selectedYear,
+    setMonth: setSelectedMonth,
+    setYear: setSelectedYear,
+    periodsLoaded,
+    yearOptions,
+    monthOptions,
+  } = usePeriodSelector('both')
 
   const [historicPeriod, setHistoricPeriod] = useState(6)
   const [historyData, setHistoryData] = useState([])
@@ -165,45 +168,35 @@ export default function Overview() {
     fetchHistory()
   }, [user, selectedMonth, selectedYear, historicPeriod])
 
-  // ── Year options ─────────────────────────────────────────────────────────────
-
-  const currentYear = now.getFullYear()
-  const yearOptions = []
-  for (let y = 2023; y <= currentYear + 1; y++) yearOptions.push(y)
-
   const summaryLoading = expensesLoading || incomeLoading
+
+  const monthName = new Date(selectedYear, selectedMonth - 1, 1).toLocaleString('en-GB', { month: 'long' })
+  const periodLabel = `${monthName} ${selectedYear}`
 
   // ── Month/year selector (rendered as PageWrapper action) ─────────────────────
 
   const monthSelector = (
     <div className="flex items-center gap-2">
-      <select
+      <Select
         value={selectedMonth}
-        onChange={(e) => setSelectedMonth(Number(e.target.value))}
-        className="bg-surface-elevated border border-surface-border text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-accent transition-colors cursor-pointer"
-      >
-        {MONTH_NAMES.map((name, i) => (
-          <option key={i + 1} value={i + 1}>
-            {name}
-          </option>
-        ))}
-      </select>
-      <select
+        onChange={setSelectedMonth}
+        options={monthOptions}
+        disabled={!periodsLoaded}
+      />
+      <Select
         value={selectedYear}
-        onChange={(e) => setSelectedYear(Number(e.target.value))}
-        className="bg-surface-elevated border border-surface-border text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-accent transition-colors cursor-pointer"
-      >
-        {yearOptions.map((y) => (
-          <option key={y} value={y}>
-            {y}
-          </option>
-        ))}
-      </select>
+        onChange={setSelectedYear}
+        options={yearOptions}
+        disabled={!periodsLoaded}
+      />
     </div>
   )
 
   return (
-    <PageWrapper title="Overview" action={monthSelector}>
+    <PageWrapper
+      title={<>Overview <span className="text-muted text-lg font-normal">— {periodLabel}</span></>}
+      action={monthSelector}
+    >
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">

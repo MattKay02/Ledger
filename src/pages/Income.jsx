@@ -5,6 +5,8 @@ import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import IncomeForm, { SOURCE_TYPES } from '../components/forms/IncomeForm'
 import { useIncome } from '../hooks/useIncome'
+import { usePeriodSelector } from '../hooks/useAvailablePeriods'
+import Select from '../components/ui/Select'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -25,11 +27,8 @@ const SOURCE_TYPE_COLOURS = {
 const formatGBP = (amount) =>
   new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(amount)
 
-const now = new Date()
-
 export default function Income() {
-  const [month, setMonth] = useState(now.getMonth() + 1)
-  const [year, setYear] = useState(now.getFullYear())
+  const { month, year, setMonth, setYear, periodsLoaded, yearOptions, monthOptions } = usePeriodSelector('income')
   const [modalOpen, setModalOpen] = useState(false)
   const [editingIncome, setEditingIncome] = useState(null)
   const [deletingId, setDeletingId] = useState(null)
@@ -85,9 +84,6 @@ export default function Income() {
     setDeletingId(null)
   }
 
-  // Build year options: current year ± 2
-  const yearOptions = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i)
-
   return (
     <PageWrapper
       title="Income"
@@ -98,24 +94,8 @@ export default function Income() {
       {/* Period selector + summary */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
         <div className="flex gap-2">
-          <select
-            value={month}
-            onChange={(e) => setMonth(Number(e.target.value))}
-            className="bg-surface-elevated border border-surface-border text-white rounded-lg px-3 py-2 text-sm outline-none focus:border-accent transition-colors"
-          >
-            {MONTHS.map((label, i) => (
-              <option key={label} value={i + 1}>{label}</option>
-            ))}
-          </select>
-          <select
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            className="bg-surface-elevated border border-surface-border text-white rounded-lg px-3 py-2 text-sm outline-none focus:border-accent transition-colors"
-          >
-            {yearOptions.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+          <Select value={month} onChange={setMonth} options={monthOptions} disabled={!periodsLoaded} />
+          <Select value={year} onChange={setYear} options={yearOptions} disabled={!periodsLoaded} />
         </div>
 
         {!loading && income.length > 0 && (
