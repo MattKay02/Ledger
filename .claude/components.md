@@ -126,8 +126,10 @@ export default Modal
 ### Sidebar
 - Fixed left sidebar on desktop
 - Icon + label navigation items
-- Routes: Overview, Expenses, Income, Budgets, Reports, Settings
+- Routes (in order): Overview, **Ledger Bot**, Expenses, Income, Budgets, Reports, Settings
 - Bottom: user avatar + sign out
+- All icons are inline SVG wrapped in a shared `<Icon>` component — no external icon library
+- Active state: `bg-accent/10 text-accent`; inactive: `text-muted hover:text-white hover:bg-surface-elevated`
 
 ### Page layout pattern
 ```jsx
@@ -208,6 +210,68 @@ Always display in GBP with £ symbol. If the original currency was not GBP, show
 £42.50
 $54.00 USD · Rate: 1.27
 ```
+
+---
+
+## Ledger Bot Components (`src/components/ledger-bot/`)
+
+### ChatBubble
+```jsx
+<ChatBubble
+  role="user" | "assistant"
+  content="string"
+  fileData={{ name: 'receipt.jpg' }}  // optional — shows file chip on user bubbles
+  isLoading={false}                   // shows animated dots instead of content
+  isError={false}                     // red border variant
+  onRetry={() => {}}                  // shows retry button when isError + onRetry provided
+/>
+```
+- User bubbles: right-aligned, `bg-accent/15 border border-accent/25 rounded-br-sm`
+- Bot bubbles: left-aligned, `bg-surface-card border border-surface-border rounded-bl-sm`
+- Error bubbles: `bg-danger/10 border border-danger/30 text-danger`
+- Loading state: three bouncing dots using `animate-bounce` with staggered delays
+- File chip: `bg-accent/10 border border-accent/20 text-accent` with paperclip icon
+
+### ConfirmationCard
+```jsx
+<ConfirmationCard
+  transaction={transactionObject}  // from Haiku's complete response
+  onConfirm={() => {}}
+  onEdit={() => {}}
+  saving={false}                   // shows spinner on Confirm button
+/>
+```
+- Shows type badge (Expense=danger, Income=success) and optional Recurring badge
+- Detail rows: category/source, date, duration (if recurring), notes (if present)
+- Foreign currency: shows original amount + `(converted at save)` note
+- Confirm button: accent; disabled + spinner while `saving`
+- Edit button: ghost variant
+
+### FileUploadButton
+```jsx
+<FileUploadButton
+  onFile={(file, sizeError) => {}}  // sizeError is string | undefined
+  disabled={false}
+  attachedFile={{ name: 'receipt.pdf' } | null}
+  onClear={() => {}}
+/>
+```
+- Accepts: `.jpg .jpeg .png .webp .gif .pdf .csv`
+- 10 MB client-side size check before calling `onFile`
+- When `attachedFile` is set: shows file name chip with × button instead of paperclip icon
+- Hidden `<input type="file">` triggered by button click
+
+### Chat page layout pattern
+The Ledger Bot page uses a fixed-height flex column within `PageWrapper`:
+```jsx
+<div className="max-w-2xl mx-auto flex flex-col gap-4 h-[calc(100vh-11rem)]">
+  <div className="flex-1 overflow-y-auto min-h-0"> {/* message thread */} </div>
+  <div className="flex-shrink-0">                  {/* input bar */}      </div>
+</div>
+```
+`min-h-0` on the scroll container is required — without it, flex children ignore overflow constraints.
+
+---
 
 ## Naming Conventions
 - Components: PascalCase (`StatCard.jsx`)
